@@ -2,77 +2,102 @@
 <html lang="pt-br" class="h-full">
 <head>
   <meta charset="UTF-8" />
-  <title>Login • LPR Dashboard</title>
+  <title>Login • F&F Security</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/tsparticles@3/tsparticles.bundle.min.js"></script>
+
   <style>
     html, body {
       height: 100%;
       overflow: hidden;
-      background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+      background: radial-gradient(circle at center, #0a0f1c 0%, #000 100%);
       color: white;
       font-family: 'Inter', sans-serif;
     }
+
     #tsparticles { position: fixed; inset: 0; z-index: 0; }
+
     .login-box {
       position: relative;
       z-index: 10;
       width: 100%;
       max-width: 420px;
-      padding: 2rem;
+      padding: 2.5rem 2rem;
       border-radius: 1rem;
-      background: rgba(15, 23, 42, 0.8);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(59, 130, 246, 0.3);
-      box-shadow: 0 0 25px rgba(37, 99, 235, 0.4);
-      animation: fadeIn 1.2s ease forwards;
+      background: rgba(10, 15, 28, 0.8);
+      backdrop-filter: blur(25px);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      box-shadow: 0 0 40px rgba(37, 99, 235, 0.4);
+      animation: fadeIn 1.3s ease forwards;
     }
+
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(30px); }
+      from { opacity: 0; transform: translateY(40px); }
       to { opacity: 1; transform: translateY(0); }
     }
+
     .login-title {
-      font-size: 1.7rem;
+      font-size: 1.8rem;
       font-weight: 700;
+      color: #93c5fd;
       letter-spacing: 1px;
-      color: #60a5fa;
-      text-shadow: 0 0 8px #3b82f6;
+      text-shadow: 0 0 12px #3b82f6;
     }
+
     .scanner-line {
       position: fixed;
       top: -100px;
       left: 0;
       width: 100%;
       height: 3px;
-      background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+      background: linear-gradient(90deg, transparent, #60a5fa, transparent);
       animation: scan 4s linear infinite;
       z-index: 1;
-      opacity: 0.4;
+      opacity: 0.35;
     }
+
     @keyframes scan {
       0% { top: -100px; }
       50% { top: 100%; }
       100% { top: -100px; }
     }
-    .btn-glow {
-      background: linear-gradient(90deg, #1e40af, #2563eb);
-      box-shadow: 0 0 12px rgba(37,99,235,0.7);
-      transition: 0.3s;
-    }
-    .btn-glow:hover {
-      box-shadow: 0 0 25px rgba(37,99,235,1);
-      transform: scale(1.03);
-    }
+
     .input-glow {
-      background: rgba(30,41,59,0.8);
+      background: rgba(15, 23, 42, 0.85);
       border: 1px solid rgba(59,130,246,0.3);
-      color: white;
+      color: #e5e7eb;
+      font-size: 0.95rem;
+      border-radius: 8px;
       transition: 0.3s;
     }
+
     .input-glow:focus {
       border-color: #3b82f6;
-      box-shadow: 0 0 10px rgba(59,130,246,0.5);
+      box-shadow: 0 0 15px rgba(59,130,246,0.6);
       outline: none;
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    .btn-glow {
+      background: linear-gradient(90deg, #1d4ed8, #2563eb);
+      color: white;
+      font-weight: 600;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(37,99,235,0.6);
+      transition: all 0.25s ease;
+    }
+
+    .btn-glow:hover {
+      box-shadow: 0 0 35px rgba(37,99,235,0.9);
+      transform: scale(1.03);
+    }
+
+    .footer-text {
+      font-size: 0.75rem;
+      color: #93c5fd;
+      opacity: 0.8;
+      margin-top: 0.5rem;
     }
   </style>
 </head>
@@ -95,27 +120,25 @@
 
     <form method="post" action="/login" class="space-y-4">
       <div>
-        <input name="username" required placeholder="Usuário" class="w-full p-3 rounded input-glow" />
+        <input name="username" required placeholder="Usuário" class="w-full p-3 input-glow" />
       </div>
       <div>
-        <input name="password" type="password" required placeholder="Senha" class="w-full p-3 rounded input-glow" />
+        <input name="password" type="password" required placeholder="Senha" class="w-full p-3 input-glow" />
       </div>
-      <button class="w-full py-3 rounded btn-glow text-white font-semibold">Entrar</button>
+      <button class="w-full py-3 btn-glow">Entrar</button>
     </form>
 
-    <p class="text-gray-400 text-xs mt-6 tracking-wide">💡 Dica: admin / admin123</p>
-    <p class="text-blue-400 text-xs mt-2 opacity-80">Sistema de Monitoramento Automático de Placas</p>
+    <p class="footer-text">Sistema de Monitoramento ASCON</p>
   </div>
 
   <script>
-    // tsParticles com tema "automação digital"
     tsParticles.load("tsparticles", {
       fullScreen: false,
       background: { color: "#020617" },
       fpsLimit: 60,
       particles: {
-        number: { value: 70 },
-        color: { value: ["#3b82f6", "#60a5fa", "#38bdf8"] },
+        number: { value: 60 },
+        color: { value: ["#2563eb", "#60a5fa", "#93c5fd"] },
         shape: { type: "circle" },
         opacity: { value: 0.6 },
         size: { value: { min: 1, max: 3 } },
