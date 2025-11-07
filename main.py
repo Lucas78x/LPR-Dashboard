@@ -29,8 +29,18 @@ create_auth_db()
 def sha256_hash(password: str, salt: str = "salzinho"):
     return hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
 
-if not get_user("admin"):
-    create_user("admin", sha256_hash("admin123"))
+# Usuários iniciais e senhas fortes
+default_users = {
+    "lucas": "sn7Ee8bC9ozR",
+    "andre": "cU4bV3yN1rT2",
+    "flavio": "pQ9zR7eW5tA8",
+    "rildo": "nK6xL2mV4bS9",
+    "wallef": "dH3qT8rZ6jP5"
+}
+
+for username, password in default_users.items():
+    if not get_user(username):
+        create_user(username, sha256_hash(password))
 
 # ---------- Cache de CSV ----------
 CSV_PATH = "placas.csv"
