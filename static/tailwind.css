@@ -1,0 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8fafc;
+}
+
+.card {
+    @apply bg-white p-4 rounded-xl shadow hover:shadow-lg transition;
+}
+
+.table-header {
+    @apply bg-gray-200 text-gray-700;
+}
+
+.btn {
+    @apply bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition;
+}

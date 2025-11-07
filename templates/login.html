@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login • LPR Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tsparticles@3/tsparticles.bundle.min.js"></script>
+  <style>
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+      color: white;
+      font-family: 'Inter', sans-serif;
+    }
+    #tsparticles { position: fixed; inset: 0; z-index: 0; }
+    .login-box {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 420px;
+      padding: 2rem;
+      border-radius: 1rem;
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      box-shadow: 0 0 25px rgba(37, 99, 235, 0.4);
+      animation: fadeIn 1.2s ease forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .login-title {
+      font-size: 1.7rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #60a5fa;
+      text-shadow: 0 0 8px #3b82f6;
+    }
+    .scanner-line {
+      position: fixed;
+      top: -100px;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+      animation: scan 4s linear infinite;
+      z-index: 1;
+      opacity: 0.4;
+    }
+    @keyframes scan {
+      0% { top: -100px; }
+      50% { top: 100%; }
+      100% { top: -100px; }
+    }
+    .btn-glow {
+      background: linear-gradient(90deg, #1e40af, #2563eb);
+      box-shadow: 0 0 12px rgba(37,99,235,0.7);
+      transition: 0.3s;
+    }
+    .btn-glow:hover {
+      box-shadow: 0 0 25px rgba(37,99,235,1);
+      transform: scale(1.03);
+    }
+    .input-glow {
+      background: rgba(30,41,59,0.8);
+      border: 1px solid rgba(59,130,246,0.3);
+      color: white;
+      transition: 0.3s;
+    }
+    .input-glow:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 10px rgba(59,130,246,0.5);
+      outline: none;
+    }
+  </style>
+</head>
+
+<body class="h-full flex items-center justify-center relative">
+  <div id="tsparticles"></div>
+  <div class="scanner-line"></div>
+
+  <div class="login-box text-center">
+    <div class="flex justify-center items-center gap-3 mb-6">
+      <img src="/static/assets/login/logo.png" class="h-12 drop-shadow-lg" alt="logo" />
+      <h1 class="login-title">F&F Security</h1>
+    </div>
+
+    {% if error %}
+    <div class="mb-4 p-3 rounded bg-red-500/20 border border-red-400 text-red-200 text-sm">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/login" class="space-y-4">
+      <div>
+        <input name="username" required placeholder="Usuário" class="w-full p-3 rounded input-glow" />
+      </div>
+      <div>
+        <input name="password" type="password" required placeholder="Senha" class="w-full p-3 rounded input-glow" />
+      </div>
+      <button class="w-full py-3 rounded btn-glow text-white font-semibold">Entrar</button>
+    </form>
+
+    <p class="text-gray-400 text-xs mt-6 tracking-wide">💡 Dica: admin / admin123</p>
+    <p class="text-blue-400 text-xs mt-2 opacity-80">Sistema de Monitoramento Automático de Placas</p>
+  </div>
+
+  <script>
+    // tsParticles com tema "automação digital"
+    tsParticles.load("tsparticles", {
+      fullScreen: false,
+      background: { color: "#020617" },
+      fpsLimit: 60,
+      particles: {
+        number: { value: 70 },
+        color: { value: ["#3b82f6", "#60a5fa", "#38bdf8"] },
+        shape: { type: "circle" },
+        opacity: { value: 0.6 },
+        size: { value: { min: 1, max: 3 } },
+        links: {
+          enable: true,
+          color: "#3b82f6",
+          distance: 130,
+          opacity: 0.3,
+          width: 1
+        },
+        move: {
+          enable: true,
+          speed: 1,
+          direction: "none",
+          outModes: { default: "bounce" }
+        }
+      },
+      interactivity: {
+        events: { onHover: { enable: true, mode: "grab" } },
+        modes: { grab: { distance: 150, links: { opacity: 0.7 } } }
+      },
+      detectRetina: true
+    });
+  </script>
+</body>
+</html>
