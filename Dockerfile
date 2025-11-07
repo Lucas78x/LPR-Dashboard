@@ -1,22 +1,24 @@
 # Imagem base leve com Python 3.12
 FROM python:3.12-slim
 
-# Define diretório de trabalho dentro do container
+# Define o diretório de trabalho
 WORKDIR /app
 
-# Copia o requirements.txt e instala dependências
+# Copia apenas dependências primeiro
 COPY requirements.txt .
+
+# Instala dependências do projeto
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Copia o restante do projeto para dentro do container
+# Copia o restante do código-fonte (sem CSV)
 COPY . .
 
-# Garante que o arquivo placas.csv exista (evita erro IsADirectoryError)
-RUN touch /app/placas.csv
+# Garante que a pasta static e templates existam
+RUN mkdir -p /app/static /app/templates
 
-# Exponha a porta usada pelo FastAPI (8000)
+# Expõe a porta usada pelo FastAPI
 EXPOSE 8000
 
-# Comando padrão para rodar o servidor Uvicorn (sem reload em produção)
+# Comando padrão de execução
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
