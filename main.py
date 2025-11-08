@@ -120,7 +120,7 @@ async def dashboard(request: Request, placa: str | None = None, regiao: str | No
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "user": request.session.get("user"),
-        "registros": registros[-200:],  # limita a 200 linhas para carregar rápido
+        "registros": registros[:200],  # limita a 200 linhas para carregar rápido
         "placa": placa or "",
         "regiao": regiao or "Todos",
         "data": data or "",
