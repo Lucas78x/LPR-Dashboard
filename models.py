@@ -6,7 +6,7 @@ import os
 
 # -------- CSV EM MEMÓRIA --------
 def importar_csv_mem(caminho_csv="placas.csv"):
-    """Lê o CSV rapidamente e retorna uma lista de dicionários ordenada por data (mais recente primeiro)."""
+    """Lê o CSV rapidamente e retorna uma lista de dicionários ordenada do mais novo para o mais antigo."""
     registros = []
 
     if not os.path.exists(caminho_csv):
@@ -18,7 +18,7 @@ def importar_csv_mem(caminho_csv="placas.csv"):
             if not row.get("Nº placa"):
                 continue
 
-            data_str = row.get("Hora", "").strip()
+            data_str = (row.get("Hora") or "").strip()
             data_ts = _parse_to_timestamp(data_str)
 
             registros.append({
@@ -37,32 +37,45 @@ def importar_csv_mem(caminho_csv="placas.csv"):
                 "tamanho_veiculo": row.get("Tam. Veíc."),
             })
 
-    # Ordena apenas uma vez, do mais novo para o mais antigo
-    registros.sort(key=lambda r: r.get("timestamp", 0), reverse=True)
+    # Remove registros sem timestamp válido
+    registros = [r for r in registros if r.get("timestamp", 0) > 0]
+
+    # Ordena do mais novo pro mais antigo
+    registros.sort(key=lambda r: r["timestamp"], reverse=True)
+
+    print(f"✅ CSV carregado: {len(registros)} registros, mais recente: {registros[0]['datahora'] if registros else 'N/A'}")
+
     return registros
 
 
-def _parse_to_timestamp(data_str):
-    """Converte várias formatações de data em timestamp numérico para ordenar rápido."""
+def _parse_to_timestamp(data_str: str) -> float:
+    """Converte string de data em timestamp (robusto para múltiplos formatos)."""
     if not data_str:
-        return 0
+        return 0.0
+
     formatos = [
         "%Y-%m-%d %H:%M:%S",
         "%Y-%m-%dT%H:%M:%S",
         "%d/%m/%Y %H:%M:%S",
         "%d/%m/%Y %H:%M",
         "%Y/%m/%d %H:%M:%S",
+        "%Y/%m/%d %H:%M",
     ]
     for fmt in formatos:
         try:
             return datetime.strptime(data_str, fmt).timestamp()
-        except:
+        except Exception:
             continue
-    return 0
+
+    # fallback: tenta ISO parcial (ex: 2025-11-08T09:00)
+    try:
+        return datetime.fromisoformat(data_str.replace("Z", "")).timestamp()
+    except Exception:
+        return 0.0
 
 
 def filtrar_registros_mem(registros, placa=None, regiao=None, data=None):
-    """Filtra e mantém ordem decrescente (mais recentes primeiro)."""
+    """Filtra e mantém ordem decrescente (mais novos primeiro)."""
     placa = (placa or "").strip().lower()
     regiao = (regiao or "").strip().lower()
     data = (data or "").strip()
@@ -77,6 +90,7 @@ def filtrar_registros_mem(registros, placa=None, regiao=None, data=None):
             continue
         result.append(r)
 
+    # registros já estão em ordem decrescente no carregamento
     return result
 
 
@@ -117,9 +131,10 @@ def estatisticas(registros):
     por_regiao = Counter()
 
     for r in registros:
-        data = _parse_from_ts(r.get("timestamp", 0))
-        if not data:
+        ts = r.get("timestamp", 0)
+        if not ts:
             continue
+        data = datetime.fromtimestamp(ts)
         por_hora[data.strftime("%Hh")] += 1
         por_semana[data.strftime("%d/%m")] += 1
         por_mes[data.strftime("%b/%Y").capitalize()] += 1
@@ -137,10 +152,3 @@ def estatisticas(registros):
         "mensal": por_mes,
         "regiao": por_regiao
     }
-
-
-def _parse_from_ts(ts):
-    try:
-        return datetime.fromtimestamp(float(ts))
-    except:
-        return None
