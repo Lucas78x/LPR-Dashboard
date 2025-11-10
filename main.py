@@ -136,7 +136,7 @@ async def api_registros(request: Request):
     if redirect:
         return redirect
     load_csv_if_changed()
-    return JSONResponse({"registros": APP_REGS[-100:]})  # apenas os últimos 100 registros
+    return JSONResponse({"registros": APP_REGS[:100:]})  # apenas os últimos 100 registros
 
 # ---------- Export CSV filtrado ----------
 @app.get("/exportar_csv")
@@ -209,3 +209,4 @@ async def api_alarms(request: Request):
             for a in alarms
         ]
     }
+

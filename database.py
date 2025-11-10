@@ -70,3 +70,28 @@ def delete_alarm(alarm_id: int):
     cur.execute("DELETE FROM alarms WHERE id = ?", (alarm_id,))
     conn.commit()
     conn.close()
+    
+def set_login_success(user_id: int):
+    """Reseta tentativas falhas e desbloqueia o usuário após login bem-sucedido."""
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET failed_attempts = 0, locked_until = 0 WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
+
+def set_login_fail(user_id: int, lock_secs: int | None = None):
+    """Incrementa falhas e bloqueia temporariamente se necessário."""
+    conn = get_conn()
+    cur = conn.cursor()
+    if lock_secs:
+        cur.execute("""
+            UPDATE users
+            SET failed_attempts = failed_attempts + 1,
+                locked_until = strftime('%s','now') + ?
+            WHERE id = ?
+        """, (lock_secs, user_id))
+    else:
+        cur.execute("UPDATE users SET failed_attempts = failed_attempts + 1 WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()

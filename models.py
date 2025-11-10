@@ -123,32 +123,91 @@ def _to_float(x):
     except:
         return 0.0
 
-
 def estatisticas(registros):
+    """Gera estatísticas completas para o dashboard e painel analítico, incluindo picos de horário (heatmap)."""
+    from statistics import mean
+
     por_hora = Counter()
+    por_horadia = Counter()  # (dia_semana, hora)
     por_semana = Counter()
     por_mes = Counter()
     por_regiao = Counter()
+    velocidade_dia = {}       # para média de velocidade por data
+    velocidade_faixa = Counter()
+    placas = Counter()
 
     for r in registros:
         ts = r.get("timestamp", 0)
         if not ts:
             continue
         data = datetime.fromtimestamp(ts)
-        por_hora[data.strftime("%Hh")] += 1
-        por_semana[data.strftime("%d/%m")] += 1
-        por_mes[data.strftime("%b/%Y").capitalize()] += 1
-        por_regiao[r.get("regiao", "N/A")] += 1
+        data_label = data.strftime("%d/%m")   # para semanal
+        mes_label = data.strftime("%b/%Y").capitalize()
+        hora_label = data.strftime("%Hh")
 
+        # contadores básicos
+        por_hora[hora_label] += 1
+        por_semana[data_label] += 1
+        por_mes[mes_label] += 1
+        por_regiao[r.get("regiao", "N/A")] += 1
+        placas[r.get("nplaca", "N/A")] += 1
+
+        # velocidade média diária
+        try:
+            v = float(str(r.get("veloc_kmh") or "0").replace(",", "."))
+        except:
+            v = 0.0
+        velocidade_dia.setdefault(data_label, []).append(v)
+
+        # faixas de velocidade
+        if v <= 30:
+            velocidade_faixa["0-30"] += 1
+        elif v <= 60:
+            velocidade_faixa["31-60"] += 1
+        elif v <= 90:
+            velocidade_faixa["61-90"] += 1
+        elif v <= 120:
+            velocidade_faixa["91-120"] += 1
+        else:
+            velocidade_faixa["121+"] += 1
+
+        # picos por dia da semana × hora
+        dia_semana = data.weekday()  # 0=Seg, 6=Dom
+        hora = data.hour
+        por_horadia[(dia_semana, hora)] += 1
+
+    # calcula médias de velocidade por data
+    velocidade_semana = {
+        k: round(mean(vs), 1) for k, vs in velocidade_dia.items()
+    }
+
+    # limita top 10 placas
+    top_placas = dict(placas.most_common(10))
+
+    # prepara dados do heatmap
+    # formata como {"0-14": 5, "3-8": 12, ...}
+    pico_horas = {f"{d}-{h}": v for (d, h), v in por_horadia.items()}
+
+    # ordenação
     por_hora = dict(sorted(por_hora.items()))
-    por_semana = dict(sorted(por_semana.items(),
-                             key=lambda x: datetime.strptime(x[0], "%d/%m")))
+    por_semana = dict(sorted(
+        por_semana.items(), key=lambda x: datetime.strptime(x[0], "%d/%m")))
+    velocidade_semana = dict(sorted(
+        velocidade_semana.items(), key=lambda x: datetime.strptime(x[0], "%d/%m")))
     por_mes = dict(sorted(por_mes.items()))
     por_regiao = dict(sorted(por_regiao.items()))
+    velocidade_faixa = dict(velocidade_faixa)
+    top_placas = dict(sorted(top_placas.items(), key=lambda x: x[1], reverse=True))
 
     return {
         "diario": por_hora,
         "semanal": por_semana,
         "mensal": por_mes,
-        "regiao": por_regiao
+        "regiao": por_regiao,
+        "velocidade_semana": velocidade_semana,
+        "velocidade_faixa": velocidade_faixa,
+        "top_placas": top_placas,
+        "pico_horas": pico_horas,   # <-- adicionado
     }
+
+   
