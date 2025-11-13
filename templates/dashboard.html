@@ -136,23 +136,32 @@
       </div>
     </div>
 
-    <!-- Gráficos padrão -->
+    <!-- Gráficos -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
         <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">📅 Registros por Dia da Semana</h3>
-        <canvas id="chart-diario"></canvas>
+        <div class="h-64">
+          <canvas id="chart-diario"></canvas>
+        </div>
       </div>
       <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
-        <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">📆 Registros Semanais</h3>
-        <canvas id="chart-semanal"></canvas>
+        <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">📆 Registros Semanais (dias da semana
+          atual)</h3>
+        <div class="h-64">
+          <canvas id="chart-semanal"></canvas>
+        </div>
       </div>
       <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
         <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">🗓️ Registros Mensais</h3>
-        <canvas id="chart-mensal"></canvas>
+        <div class="h-64">
+          <canvas id="chart-mensal"></canvas>
+        </div>
       </div>
       <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
         <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">📍 Placas por Região</h3>
-        <canvas id="chart-regiao"></canvas>
+        <div class="h-64">
+          <canvas id="chart-regiao"></canvas>
+        </div>
       </div>
     </div>
 
@@ -209,25 +218,288 @@
   </div>
 
   <script>
-    window.addEventListener('load', () => document.getElementById('loading-screen').style.display = 'none');
+    // Oculta tela de loading após carregar
+    window.addEventListener('load', () => {
+      document.getElementById('loading-screen').style.display = 'none';
+    });
+
+    // Botão de refresh
     document.getElementById('refreshBtn').addEventListener('click', () => location.reload());
 
+    // Dados vindos do backend
     const stats = {{ stats | tojson }};
-    const azul = ['#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
+    const hoje = new Date();
 
-    function criarGrafico(id, titulo, labels, data) {
-      new Chart(document.getElementById(id), {
-        type: 'bar',
-        data: { labels, datasets: [{ label: titulo, data, backgroundColor: azul, borderRadius: 8 }] },
-        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    // Paleta base
+    const azul = '#2563eb';
+    const azulClaro = '#60a5fa';
+    const azulTransparente = 'rgba(37, 99, 235, 0.12)';
+
+    // Configuração global dos gráficos
+    Chart.defaults.font.family = 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    Chart.defaults.color = '#6b7280'; // gray-500
+    Chart.defaults.plugins.tooltip.backgroundColor = '#111827'; // gray-900
+    Chart.defaults.plugins.tooltip.titleColor = '#e5e7eb'; // gray-200
+    Chart.defaults.plugins.tooltip.bodyColor = '#e5e7eb';
+    Chart.defaults.plugins.legend.labels.boxWidth = 0; // sem caixinha de cor
+
+    // Função para ordenar datas no formato dd/mm (sem ano)
+    function ordenarDatas(dates) {
+      return dates.sort((a, b) => {
+        const [diaA, mesA] = a.split("/").map(Number);
+        const [diaB, mesB] = b.split("/").map(Number);
+        const ano = new Date().getFullYear();
+        const dA = new Date(ano, mesA - 1, diaA);
+        const dB = new Date(ano, mesB - 1, diaB);
+        return dA - dB;
       });
     }
 
-    criarGrafico('chart-diario', 'Por Dia da Semana', ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'], Object.values(stats.diario));
-    criarGrafico('chart-semanal', 'Últimos 7 Dias', Object.keys(stats.semanal), Object.values(stats.semanal));
-    criarGrafico('chart-mensal', 'Últimos 30 Dias', Object.keys(stats.mensal), Object.values(stats.mensal));
-    criarGrafico('chart-regiao', 'Por Região', Object.keys(stats.regiao), Object.values(stats.regiao));
+    // =====================================================================
+    // GRÁFICO DIÁRIO - até o dia atual
+    // =====================================================================
+    (function () {
+  const ctx = document.getElementById('chart-diario').getContext('2d');
+  const dadosDiario = stats.diario || {};
+
+  // Mapa universal de nomes → chave padrão ("Seg", "Ter"...)
+  const mapaDias = {
+    "segunda": "Seg", "segunda-feira": "Seg", "seg": "Seg", "segundo": "Seg",
+    "mon": "Seg", "monday": "Seg",
+
+    "terça": "Ter", "terça-feira": "Ter", "ter": "Ter",
+    "tue": "Ter", "tuesday": "Ter",
+
+    "quarta": "Qua", "quarta-feira": "Qua", "qua": "Qua",
+    "wed": "Qua", "wednesday": "Qua",
+
+    "quinta": "Qui", "quinta-feira": "Qui", "qui": "Qui",
+    "thu": "Qui", "thursday": "Qui",
+
+    "sexta": "Sex", "sexta-feira": "Sex", "sex": "Sex",
+    "fri": "Sex", "friday": "Sex",
+
+    "sábado": "Sáb", "sabado": "Sáb", "sáb": "Sáb", "sab": "Sáb",
+    "sat": "Sáb", "saturday": "Sáb",
+
+    "domingo": "Dom", "dom": "Dom",
+    "sun": "Dom", "sunday": "Dom",
+  };
+
+  // Converter CHAVES do stats.diario para padrão usado no gráfico
+  const dadosConvertidos = {
+    "Seg": 0, "Ter": 0, "Qua": 0, "Qui": 0, "Sex": 0, "Sáb": 0, "Dom": 0
+  };
+
+  for (const chave in dadosDiario) {
+    const normalizado = chave.toLowerCase().trim();
+    if (mapaDias[normalizado]) {
+      dadosConvertidos[mapaDias[normalizado]] = dadosDiario[chave];
+    }
+  }
+
+  const nomesDias = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+  // Dia atual da semana
+  let indiceHoje = hoje.getDay();
+  if (indiceHoje === 0) indiceHoje = 6; else indiceHoje--;
+
+  // Mostrar somente até hoje
+  const labels = nomesDias.slice(0, indiceHoje + 1);
+  const valores = labels.map(dia => dadosConvertidos[dia] ?? 0);
+
+  // Gradiente
+  const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+  gradient.addColorStop(0, "rgba(96,165,250,0.6)");
+  gradient.addColorStop(1, "rgba(37,99,235,0.05)");
+
+  new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "Registros",
+        data: valores,
+        borderColor: azul,
+        backgroundColor: gradient,
+        borderWidth: 3,
+        tension: 0.3,
+        fill: true,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.parsed.y} registros`
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }},
+        y: {
+          beginAtZero: true,
+          grid: { color: azulTransparente },
+          ticks: { precision: 0 }
+        }
+      }
+    }
+  });
+})();
+
+    // =====================================================================
+    // GRÁFICO SEMANAL - usando datas ordenadas (dd/mm)
+    // =====================================================================
+    (function () {
+      const ctx = document.getElementById('chart-semanal').getContext('2d');
+      const dadosSemanal = stats.semanal || {};
+
+      const labelsBrutas = Object.keys(dadosSemanal);
+      const labelsOrdenadas = ordenarDatas([...labelsBrutas]);
+      const valores = labelsOrdenadas.map(d => dadosSemanal[d] ?? 0);
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+      gradient.addColorStop(0, 'rgba(96, 165, 250, 0.7)');
+      gradient.addColorStop(1, 'rgba(37, 99, 235, 0.1)');
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labelsOrdenadas,
+          datasets: [{
+            label: 'Registros / dia (semana atual)',
+            data: valores,
+            borderColor: azul,
+            backgroundColor: gradient,
+            borderWidth: 3,
+            tension: 0.25,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.parsed.y} registros`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              beginAtZero: true,
+              grid: { color: azulTransparente },
+              ticks: { precision: 0 }
+            }
+          }
+        }
+      });
+    })();
+
+    // =====================================================================
+    // GRÁFICO MENSAL - barras horizontais
+    // =====================================================================
+    (function () {
+      const ctx = document.getElementById('chart-mensal').getContext('2d');
+      const dadosMensal = stats.mensal || {};
+
+      const labels = Object.keys(dadosMensal);
+      const valores = labels.map(l => dadosMensal[l] ?? 0);
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Registros / mês',
+            data: valores,
+            backgroundColor: azulClaro,
+            borderColor: azul,
+            borderWidth: 1.5,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.parsed.x} registros`
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              grid: { color: azulTransparente },
+              ticks: { precision: 0 }
+            },
+            y: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    })();
+
+    // =====================================================================
+    // GRÁFICO POR REGIÃO - barras verticais
+    // =====================================================================
+    (function () {
+      const ctx = document.getElementById('chart-regiao').getContext('2d');
+      const dadosRegiao = stats.regiao || {};
+
+      const labels = Object.keys(dadosRegiao);
+      const valores = labels.map(l => dadosRegiao[l] ?? 0);
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Registros / região',
+            data: valores,
+            backgroundColor: azulClaro,
+            borderColor: azul,
+            borderWidth: 2,
+            borderRadius: 8,
+            maxBarThickness: 36
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.parsed.y} registros`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: azulTransparente },
+              ticks: { precision: 0 }
+            }
+          }
+        }
+      });
+    })();
   </script>
+
 </body>
 
 </html>
