@@ -15,17 +15,13 @@ templates = Jinja2Templates(directory="templates")
 os.makedirs("static", exist_ok=True)
 os.makedirs("templates", exist_ok=True)
 
-# Sessão (cookies assinados)
 SECRET_KEY = os.environ.get("APP_SECRET", secrets.token_hex(32))
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
-# Static
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# --- Inicialização ---
 create_auth_db()
 
-# cria usuário padrão (admin/admin123) se não existir
 def sha256_hash(password: str, salt: str = "salzinho"):
     return hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
 
@@ -130,13 +126,25 @@ async def dashboard(request: Request, placa: str | None = None, regiao: str | No
     })
 
 # ---------- API: Registros (AJAX leve) ----------
+from datetime import datetime
+
 @app.get("/api/registros")
 async def api_registros(request: Request):
     redirect = ensure_login(request)
     if redirect:
         return redirect
+
     load_csv_if_changed()
-    return JSONResponse({"registros": APP_REGS[:100:]})  # apenas os últimos 100 registros
+
+    def parse_dt(r):
+        try:
+            return datetime.strptime(r["datahora"], "%Y-%m-%d %H:%M:%S")
+        except:
+            return datetime.min
+
+    ordenados = sorted(APP_REGS, key=parse_dt, reverse=True)
+    return JSONResponse({"registros": ordenados[:100]})
+
 
 # ---------- Export CSV filtrado ----------
 @app.get("/exportar_csv")
