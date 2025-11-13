@@ -4,9 +4,12 @@ from datetime import datetime, timedelta
 import locale
 import os
 
-# -------- CSV EM MEMÓRIA --------
+# --------------------------------------------------------------------------------
+#   LEITURA DO CSV EM MEMÓRIA
+# --------------------------------------------------------------------------------
+
 def importar_csv_mem(caminho_csv="placas.csv"):
-    """Lê o CSV rapidamente e retorna uma lista de dicionários ordenada do mais novo para o mais antigo."""
+    """Lê o CSV rapidamente e retorna lista de registros ordenados do mais novo para o mais antigo."""
     registros = []
 
     if not os.path.exists(caminho_csv):
@@ -37,19 +40,22 @@ def importar_csv_mem(caminho_csv="placas.csv"):
                 "tamanho_veiculo": row.get("Tam. Veíc."),
             })
 
-    # Remove registros sem timestamp válido
+    # Filtra inválidos
     registros = [r for r in registros if r.get("timestamp", 0) > 0]
 
-    # Ordena do mais novo pro mais antigo
+    # Ordena por data (decrescente)
     registros.sort(key=lambda r: r["timestamp"], reverse=True)
 
-    print(f"✅ CSV carregado: {len(registros)} registros, mais recente: {registros[0]['datahora'] if registros else 'N/A'}")
+    print(f"📄 CSV carregado: {len(registros)} registros | Mais recente: {registros[0]['datahora'] if registros else 'N/A'}")
 
     return registros
 
 
+# --------------------------------------------------------------------------------
+#   PARSE DE DATA ROBUSTO
+# --------------------------------------------------------------------------------
+
 def _parse_to_timestamp(data_str: str) -> float:
-    """Converte string de data em timestamp (robusto para múltiplos formatos)."""
     if not data_str:
         return 0.0
 
@@ -64,18 +70,20 @@ def _parse_to_timestamp(data_str: str) -> float:
     for fmt in formatos:
         try:
             return datetime.strptime(data_str, fmt).timestamp()
-        except Exception:
-            continue
+        except:
+            pass
 
-    # fallback: tenta ISO parcial (ex: 2025-11-08T09:00)
     try:
         return datetime.fromisoformat(data_str.replace("Z", "")).timestamp()
-    except Exception:
+    except:
         return 0.0
 
 
+# --------------------------------------------------------------------------------
+#   FILTRAR SEM PERDER ORDEM
+# --------------------------------------------------------------------------------
+
 def filtrar_registros_mem(registros, placa=None, regiao=None, data=None):
-    """Filtra e mantém ordem decrescente (mais novos primeiro)."""
     placa = (placa or "").strip().lower()
     regiao = (regiao or "").strip().lower()
     data = (data or "").strip()
@@ -90,9 +98,12 @@ def filtrar_registros_mem(registros, placa=None, regiao=None, data=None):
             continue
         result.append(r)
 
-    # registros já estão em ordem decrescente no carregamento
-    return result
+    return sorted(result, key=lambda r: r["timestamp"], reverse=True)
 
+
+# --------------------------------------------------------------------------------
+#   RESUMO GERAL
+# --------------------------------------------------------------------------------
 
 def resumo_mem(registros):
     total = len(registros)
@@ -101,8 +112,7 @@ def resumo_mem(registros):
     vel = []
     for r in registros:
         try:
-            v = float(str(r.get("veloc_kmh") or "0").replace(",", "."))
-            vel.append(v)
+            vel.append(float(str(r.get("veloc_kmh") or "0").replace(",", ".")))
         except:
             pass
     media = round(sum(vel)/len(vel), 1) if vel else 0.0
@@ -123,91 +133,131 @@ def _to_float(x):
     except:
         return 0.0
 
+
+# --------------------------------------------------------------------------------
+#   ESTATÍSTICAS COMPLETAS (CORRIGIDO!)
+# --------------------------------------------------------------------------------
+
 def estatisticas(registros):
-    """Gera estatísticas completas para o dashboard e painel analítico, incluindo picos de horário (heatmap)."""
+    """Gera estatísticas completas para o dashboard e painel analítico."""
     from statistics import mean
 
     por_hora = Counter()
-    por_horadia = Counter()  # (dia_semana, hora)
-    por_semana = Counter()
+    por_dia_semana = Counter()
     por_mes = Counter()
     por_regiao = Counter()
-    velocidade_dia = {}       # para média de velocidade por data
-    velocidade_faixa = Counter()
     placas = Counter()
+    velocidade_dia = {}
+    velocidade_faixa = Counter()
+    por_horadia = Counter()
+
+    hoje = datetime.now()
+
+    dia_semana = hoje.weekday()  # 0 = segunda
+    segunda = hoje - timedelta(days=dia_semana)
+    domingo = segunda + timedelta(days=6)
+
+    por_semana_atual = Counter()
+    por_ultimos7 = Counter()
+
+    nomes_semana = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
 
     for r in registros:
         ts = r.get("timestamp", 0)
         if not ts:
             continue
+
         data = datetime.fromtimestamp(ts)
-        data_label = data.strftime("%d/%m")   # para semanal
+        data_label = data.strftime("%d/%m")
         mes_label = data.strftime("%b/%Y").capitalize()
         hora_label = data.strftime("%Hh")
 
-        # contadores básicos
+        # -----------------------------------------
+        # HORAS (já existia)
+        # -----------------------------------------
         por_hora[hora_label] += 1
-        por_semana[data_label] += 1
+
+        # -----------------------------------------
+        # DIA DA SEMANA (NOVO!)
+        # -----------------------------------------
+        indice = data.weekday()  # 0=Seg → 6=Dom
+        nome_dia = nomes_semana[indice]
+        por_dia_semana[nome_dia] += 1
+
+        # -----------------------------------------
+        # SEMANAL
+        # -----------------------------------------
+        if segunda.date() <= data.date() <= domingo.date():
+            por_semana_atual[data_label] += 1
+
+        if data >= hoje - timedelta(days=7):
+            por_ultimos7[data_label] += 1
+
+        # -----------------------------------------
+        # MENSAL
+        # -----------------------------------------
         por_mes[mes_label] += 1
+
+        # -----------------------------------------
+        # REGIÃO
+        # -----------------------------------------
         por_regiao[r.get("regiao", "N/A")] += 1
+
+        # -----------------------------------------
+        # PLACAS
+        # -----------------------------------------
         placas[r.get("nplaca", "N/A")] += 1
 
-        # velocidade média diária
+        # -----------------------------------------
+        # VELOCIDADE
+        # -----------------------------------------
         try:
             v = float(str(r.get("veloc_kmh") or "0").replace(",", "."))
         except:
             v = 0.0
+
         velocidade_dia.setdefault(data_label, []).append(v)
 
-        # faixas de velocidade
-        if v <= 30:
-            velocidade_faixa["0-30"] += 1
-        elif v <= 60:
-            velocidade_faixa["31-60"] += 1
-        elif v <= 90:
-            velocidade_faixa["61-90"] += 1
-        elif v <= 120:
-            velocidade_faixa["91-120"] += 1
-        else:
-            velocidade_faixa["121+"] += 1
+        if v <= 30: velocidade_faixa["0-30"] += 1
+        elif v <= 60: velocidade_faixa["31-60"] += 1
+        elif v <= 90: velocidade_faixa["61-90"] += 1
+        elif v <= 120: velocidade_faixa["91-120"] += 1
+        else: velocidade_faixa["121+"] += 1
 
-        # picos por dia da semana × hora
-        dia_semana = data.weekday()  # 0=Seg, 6=Dom
-        hora = data.hour
-        por_horadia[(dia_semana, hora)] += 1
+        por_horadia[(data.weekday(), data.hour)] += 1
 
-    # calcula médias de velocidade por data
-    velocidade_semana = {
-        k: round(mean(vs), 1) for k, vs in velocidade_dia.items()
-    }
+    # ----------------------------
+    # SEMANAL LÓGICA INTELIGENTE
+    # ----------------------------
+    por_semana = por_semana_atual or por_ultimos7
 
-    # limita top 10 placas
-    top_placas = dict(placas.most_common(10))
+    def sort_ddmm(x):
+        return datetime.strptime(x, "%d/%m")
 
-    # prepara dados do heatmap
-    # formata como {"0-14": 5, "3-8": 12, ...}
-    pico_horas = {f"{d}-{h}": v for (d, h), v in por_horadia.items()}
-
-    # ordenação
-    por_hora = dict(sorted(por_hora.items()))
-    por_semana = dict(sorted(
-        por_semana.items(), key=lambda x: datetime.strptime(x[0], "%d/%m")))
-    velocidade_semana = dict(sorted(
-        velocidade_semana.items(), key=lambda x: datetime.strptime(x[0], "%d/%m")))
+    por_semana = dict(sorted(por_semana.items(), key=lambda x: sort_ddmm(x[0])))
     por_mes = dict(sorted(por_mes.items()))
     por_regiao = dict(sorted(por_regiao.items()))
-    velocidade_faixa = dict(velocidade_faixa)
-    top_placas = dict(sorted(top_placas.items(), key=lambda x: x[1], reverse=True))
+    por_hora = dict(sorted(por_hora.items()))
 
+    # velocidade média por dia
+    velocidade_semana = {
+        k: round(sum(vs) / len(vs), 1) for k, vs in velocidade_dia.items()
+    }
+    velocidade_semana = dict(sorted(velocidade_semana.items(), key=lambda x: sort_ddmm(x[0])))
+
+    topo_placas = dict(placas.most_common(10))
+    pico_horas = {f"{d}-{h}": v for (d, h), v in por_horadia.items()}
+
+    # ----------------------------
+    # RETORNO FINAL
+    # ----------------------------
     return {
-        "diario": por_hora,
+        "diario": por_dia_semana,          # <-- AGORA SIM!
         "semanal": por_semana,
         "mensal": por_mes,
         "regiao": por_regiao,
         "velocidade_semana": velocidade_semana,
         "velocidade_faixa": velocidade_faixa,
-        "top_placas": top_placas,
-        "pico_horas": pico_horas,   # <-- adicionado
+        "top_placas": topo_placas,
+        "pico_horas": pico_horas,
     }
-
-   
